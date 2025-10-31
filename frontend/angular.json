@@ -3,7 +3,7 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "frontend1": {
+    "frontend": {
       "projectType": "application",
       "schematics": {},
       "root": "",

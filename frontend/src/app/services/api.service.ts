@@ -1,10 +1,12 @@
+import { environment } from './../../environment.prod';
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
-  base = 'http://localhost:3000';
+  private baseUrl = environment.apiUrl;
+
   constructor(private http: HttpClient) {}
 
   private opts() {
@@ -13,7 +15,7 @@ export class ApiService {
   }
 
   get<T = any>(path: string) {
-    return firstValueFrom(this.http.get<T>(this.base + path, this.opts()));
+    return firstValueFrom(this.http.get<T>(this.baseUrl + path, this.opts()));
   }
 
   post<T = any>(path: string, body: any) {
@@ -21,15 +23,15 @@ export class ApiService {
     if (body && typeof body.name === 'string') {
       body.name = body.name.trim().toUpperCase();
     }
-    return firstValueFrom(this.http.post<T>(this.base + path, body, this.opts()));
+    return firstValueFrom(this.http.post<T>(this.baseUrl + path, body, this.opts()));
   }
 
 
   put<T = any>(path: string, body: any) {
-    return firstValueFrom(this.http.put<T>(this.base + path, body, this.opts()));
+    return firstValueFrom(this.http.put<T>(this.baseUrl + path, body, this.opts()));
   }
 
   delete<T = any>(path: string) {
-    return firstValueFrom(this.http.delete<T>(this.base + path, this.opts()));
+    return firstValueFrom(this.http.delete<T>(this.baseUrl + path, this.opts()));
   }
 }
