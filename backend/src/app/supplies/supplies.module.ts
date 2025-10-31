@@ -8,6 +8,6 @@ import { SuppliesController } from './supplies.controller';
   imports: [TypeOrmModule.forFeature([Supply])],
   providers: [SuppliesService],
   controllers: [SuppliesController],
-  exports: [SuppliesService], // ✅ exportamos para usar en orders
+  exports: [SuppliesService],
 })
 export class SuppliesModule {}

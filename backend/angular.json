@@ -3,7 +3,7 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "panaderia-backend1": {
+    "panaderia-backend": {
       "projectType": "application",
       "schematics": {},
       "root": "",
@@ -13,6 +13,7 @@
         "build": {
           "builder": "@angular/build:application",
           "options": {
+            "baseHref": "/Sistema-Panaderia/",
             "browser": "src/main.ts",
             "polyfills": [
               "zone.js"
@@ -56,10 +57,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "panaderia-backend1:build:production"
+              "buildTarget": "panaderia-backend:build:production"
             },
             "development": {
-              "buildTarget": "panaderia-backend1:build:development"
+              "buildTarget": "panaderia-backend:build:development"
             }
           },
           "defaultConfiguration": "development"

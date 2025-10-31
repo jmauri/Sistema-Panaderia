@@ -14,7 +14,7 @@ export class RecipesService {
     @InjectRepository(Supply) private supplyRepo: Repository<Supply>, // inyectamos repo de Supply
   ) {}
 
-  // 🔹 Crear una nueva receta (normaliza modos y crea insumos faltantes)
+  // Crear una nueva receta (normaliza modos y crea insumos faltantes)
   async create(data: Partial<Recipe>) {
     const recipe = this.repo.create({
       name: (data.name ?? '').trim(),
@@ -50,7 +50,7 @@ export class RecipesService {
 
       recipe.ingredients = await this.ingRepo.save(ingredients);
 
-      // 🔹 Crear insumos faltantes en la tabla supplies con quantity = 0
+      //Crear insumos faltantes en la tabla supplies con quantity = 0
       for (const ing of recipe.ingredients) {
         const name = (ing.name || '').trim().toUpperCase();
         // No crear insumo para AGUA (ingrediente técnico)
@@ -80,17 +80,17 @@ export class RecipesService {
     return this.repo.save(recipe);
   }
 
-  // 🔹 Obtener todas las recetas
+  // Obtener todas las recetas
   async findAll() {
     return this.repo.find({ relations: ['ingredients'] });
   }
 
-  // 🔹 Buscar una receta por ID
+  //Buscar una receta por ID
   findOne(id: number) {
     return this.repo.findOne({ where: { id }, relations: ['ingredients'] });
   }
 
-  // 🔹 Actualizar una receta (reemplaza ingredientes si vienen)
+  // Actualizar una receta (reemplaza ingredientes si vienen)
   async update(id: number, data: Partial<Recipe>) {
     const recipe = await this.repo.findOne({ where: { id }, relations: ['ingredients'] });
     if (!recipe) throw new Error('Receta no encontrada');
@@ -153,7 +153,7 @@ export class RecipesService {
     return this.repo.save(recipe);
   }
 
-  // 🔹 Eliminar receta
+  // Eliminar receta
   delete(id: number) {
     return this.repo.delete(id);
   }

@@ -184,7 +184,7 @@ export class RecetaDetalleComponent implements OnInit {
 
   async save() {
     try {
-      // 🔹 Convertir nombres a mayúsculas
+      // Convertir nombres a mayúsculas
       this.recipe.ingredients = this.recipe.ingredients.map((i: any) => ({
         ...i,
         name: i.name.trim().toUpperCase(),

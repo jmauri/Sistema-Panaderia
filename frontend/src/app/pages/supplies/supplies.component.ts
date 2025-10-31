@@ -142,7 +142,7 @@ export class SuppliesComponent implements OnInit {
   async cargarInsumos() {
     try {
       const data = await this.api.get('/supplies');
-      // 🔹 Excluir "AGUA" sin importar mayúsculas/minúsculas
+      //Excluir "AGUA" sin importar mayúsculas/minúsculas
       this.insumos = data.filter((s: any) => s.name.toUpperCase() !== 'AGUA');
     } catch (err) {
       console.error('Error al cargar insumos:', err);
@@ -151,10 +151,10 @@ export class SuppliesComponent implements OnInit {
 
   async guardar() {
     try {
-      // 🔹 Normalizar nombre
+      //Normalizar nombre
       this.nuevo.name = this.nuevo.name.trim().toUpperCase();
 
-      // 🔹 Excluir AGUA
+      //Excluir AGUA
       if (this.nuevo.name === 'AGUA') {
         alert('⚠️ El agua no se registra como insumo de inventario.');
         return;

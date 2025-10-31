@@ -13,6 +13,7 @@
         "build": {
           "builder": "@angular/build:application",
           "options": {
+            "baseHref": "/Sistema-Panaderia/",
             "browser": "src/main.ts",
             "polyfills": [
               "zone.js"
@@ -57,10 +58,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "frontend1:build:production"
+              "buildTarget": "frontend:build:production"
             },
             "development": {
-              "buildTarget": "frontend1:build:development"
+              "buildTarget": "frontend:build:development"
             }
           },
           "defaultConfiguration": "development"

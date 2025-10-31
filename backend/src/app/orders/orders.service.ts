@@ -1,4 +1,3 @@
-// backend/src/app/orders/orders.service.ts
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -31,7 +30,7 @@ export class OrdersService {
     });
     if (!recipe) throw new Error('Receta no encontrada');
 
-    // -> Parse peso unitario a kg
+    // pasar peso unitario a kg
     const str = (data.unitWeight || '').toString().trim().toLowerCase();
     const pesoUnitarioKg =
       str.endsWith('kg')
@@ -44,7 +43,7 @@ export class OrdersService {
 
     const totalWeightKg = pesoUnitarioKg * data.quantity;
 
-    // -> Buscar harina (por nombre) o escoger ingrediente con mayor bakerPct
+    // Buscar harina (por nombre) o escoger ingrediente con mayor bakerPct
     const harinaByName = recipe.ingredients.find(i => (i.name || '').toUpperCase().includes('HARINA'));
     const harinaByMaxPct = recipe.ingredients.reduce((max, i) => ((i.bakerPct ?? 0) > (max.bakerPct ?? 0) ? i : max), recipe.ingredients[0]);
     const harinaBase = harinaByName || harinaByMaxPct;
@@ -53,7 +52,7 @@ export class OrdersService {
     const harinaPct = Number(harinaBase?.bakerPct ?? harinaBase?.value ?? 100);
     const baseKg = harinaBase ? (harinaPct / 100) * totalWeightKg : totalWeightKg;
 
-    // -> calcular ingredientesUsed (cantidad y unidad final)
+    // calcular ingredientesUsed (cantidad y unidad final)
     const ingredientsUsed = recipe.ingredients.map(ing => {
       const mode = (ing.mode || '').toString().toLowerCase();
       // fallback para pct: si bakerPct está vacío puede haberse enviado en value
@@ -87,8 +86,6 @@ export class OrdersService {
         cantidadOut = parseFloat((cantidadKg * 1000).toFixed(2));
         unitOut = 'ml';
       } else if (rawUnit === 'unidad' || rawUnit === 'unit') {
-        // se asume value ya convertido en unidades por 'unit' mode
-        // si cantidadKg representa kg por pieza (no habitual), dejamos 3 decimales
         cantidadOut = rawUnit === 'unidad' || mode === 'unit' ? parseFloat(cantidadKg.toFixed(3)) : parseFloat(cantidadKg.toFixed(3));
         unitOut = 'unidad';
       } else if (rawUnit === 'l' || (ing.type || '').toUpperCase() === 'LIQUID') {
@@ -120,7 +117,7 @@ export class OrdersService {
       };
     });
 
-    // -> crear orden
+    // crear orden
     const order = this.repo.create({
       date: new Date(),
       recipe,
@@ -132,7 +129,7 @@ export class OrdersService {
 
     const saved = await this.repo.save(order);
 
-    // -> descontar inventario (usar supplyRepo, respetar nonInventariable y AGUA)
+    // descontar inventario (usar supplyRepo, respetar nonInventariable y AGUA)
     for (const ing of ingredientsUsed) {
       const name = (ing.name || '').trim().toUpperCase();
       const supply = await this.supplyRepo.findOne({ where: { name } });

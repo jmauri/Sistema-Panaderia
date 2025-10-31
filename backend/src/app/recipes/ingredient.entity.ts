@@ -28,7 +28,7 @@ export class Ingredient {
   recipe: Recipe;
 
   @Column('float', { default: 0 })
-  weight: number; // peso unitario en gramos
+  weight: number;
 
 
   @BeforeInsert()
