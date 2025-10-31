@@ -20,6 +20,8 @@ import { SuppliesModule } from './app/supplies/supplies.module';
       autoLoadEntities: true,
       synchronize: true,
       logging: false,
+      ssl: {rejectUnauthorized: false, // SSL para Render
+  },
     }),
     UsersModule,
     AuthModule,
