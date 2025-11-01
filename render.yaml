@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: panaderia-backend
+    env: node
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
+    envVars:
+      - key: DB_HOST
+        value: dpg-d42g5k24d50c739n86mg-a
+      - key: DB_PORT
+        value: 5432
+      - key: DB_USER
+        value: panaderia_db_pzcx_user
+      - key: DB_PASS
+        value: Ic5HtsrGd8yq6EavGzBo523dinxivgSq
+      - key: DB_NAME
+        value: panaderia_db_pzcx
+
+  - type: static
+    name: panaderia-frontend
+    rootDir: frontend
+    buildCommand: npm install && npm run build -- --configuration production
+    publishDir: dist/frontend/browser
