@@ -70,6 +70,7 @@ export class OrdersService {
       harinaBase?.bakerPct ?? harinaBase?.value ?? 100,
     );
     const baseKg = harinaBase ? (harinaPct / 100) * totalWeightKg : totalWeightKg;
+    console.log('Ingredientes de receta recibida:', recipe.ingredients);
 
     // calcular ingredientes usados
     const ingredientsUsed = recipe.ingredients.map(ing => {
