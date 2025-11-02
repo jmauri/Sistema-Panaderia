@@ -24,6 +24,7 @@ export class OrdersService {
   }
 
   async create(data: any) {
+    console.log('Datos recibidos en /orders:', data);
     const recipe = await this.recipeRepo.findOne({
       where: { id: data.recipeId },
       relations: ['ingredients'],
