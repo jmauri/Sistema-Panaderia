@@ -117,7 +117,8 @@ export class OrdersService {
     }, ingredientes[0] || null);
 
     const harinaBase = harinaByName || harinaByMaxPct || null;
-    const harinaPct = this.parseLoose(harinaBase?.bakerPct ?? harinaBase?.value ?? 100);
+    let harinaPct = this.parseLoose(harinaBase?.bakerPct);
+    if (!harinaPct || harinaPct <= 0) harinaPct = this.parseLoose(harinaBase?.value ?? 100);
     const baseKg = harinaBase ? (harinaPct / 100) * totalWeightKg : totalWeightKg;
 
     console.log('harinaBase:', harinaBase?.name ?? null, 'harinaPct:', harinaPct, 'baseKg:', baseKg);
