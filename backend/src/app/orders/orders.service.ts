@@ -29,6 +29,7 @@ export class OrdersService {
       where: { id: data.recipeId },
       relations: ['ingredients'],
     });
+    console.log('Receta encontrada:', recipe);
     if (!recipe) throw new Error('Receta no encontrada');
 
     // pasar peso unitario a kg
