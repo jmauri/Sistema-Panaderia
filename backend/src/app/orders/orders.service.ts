@@ -23,60 +23,111 @@ export class OrdersService {
     return this.repo.findOne({ where: { id }, relations: ['recipe', 'recipe.ingredients'] });
   }
 
-  // función auxiliar para limpiar y convertir números
-  private parseNumber(value: any): number {
+  private parseLoose(value: any): number {
+    // manejo rápido de primitives
     if (value == null) return 0;
-    let str = value.toString().trim().toLowerCase();
-    // reemplazar comas por puntos y quitar % o texto no numérico
-    str = str.replace(',', '.').replace(/[^0-9.\-]+/g, '');
-    const num = parseFloat(str);
-    return isNaN(num) ? 0 : num;
+    if (typeof value === 'number' && isFinite(value)) return value;
+    if (typeof value === 'boolean') return value ? 1 : 0;
+
+    // si es un objeto que contiene campos relevantes, pruebo recursivamente
+    if (typeof value === 'object') {
+      // casos comunes: { value: '70' } o { bakerPct: '60%' }
+      if ('bakerPct' in value) return this.parseLoose(value.bakerPct);
+      if ('value' in value) return this.parseLoose(value.value);
+      if ('qty' in value) return this.parseLoose(value.qty);
+      // intente convertir el objeto a string
+      try {
+        value = JSON.stringify(value);
+      } catch {
+        return 0;
+      }
+    }
+
+    // ahora tratar como string
+    let s = String(value).trim().toLowerCase();
+
+    // Reemplazar coma decimal por punto, eliminar espacios
+    s = s.replace(/\s+/g, '').replace(',', '.');
+
+    // Pero primero, si es algo tipo "60g" o "0.08kg" captar el número inicial:
+    const matchNumber = s.match(/-?\d+(\.\d+)?/);
+    if (!matchNumber) return 0;
+    const numStr = matchNumber[0];
+    const num = parseFloat(numStr);
+    return isFinite(num) ? num : 0;
+  }
+
+  private parseUnitWeightToKg(raw: any): number {
+    if (raw == null) return 0;
+
+    const s = String(raw).trim().toLowerCase();
+
+    if (s.includes('kg')) {
+      const n = this.parseLoose(s);
+      return n;
+    } else if (s.includes('g')) {
+      const n = this.parseLoose(s);
+      return n / 1000;
+    } else if (s.includes('l')) {
+      const n = this.parseLoose(s);
+      // asumimos densidad 1 (L ~ kg) para líquidos
+      return n;
+    } else if (s.includes('ml')) {
+      const n = this.parseLoose(s);
+      return n / 1000;
+    } else {
+      // solo un número sin unidad -> asumimos gramos (ej: "80" -> 80 g)
+      const n = this.parseLoose(s);
+
+      // Para mantener compatibilidad tratamos número puro como gramos
+      return n / 1000;
+    }
   }
 
   async create(data: any) {
     console.log('Datos recibidos en /orders:', data);
+
     const recipe = await this.recipeRepo.findOne({
       where: { id: data.recipeId },
       relations: ['ingredients'],
     });
+
+    console.log('Receta encontrada:', recipe?.id ?? null);
     if (!recipe) throw new Error('Receta no encontrada');
 
-    // peso unitario a kg
-    const str = (data.unitWeight || '').toString().trim().toLowerCase();
-    const pesoUnitarioKg =
-      str.endsWith('kg')
-        ? parseFloat(str.replace('kg', '').trim())
-        : str.endsWith('g')
-        ? parseFloat(str.replace('g', '').trim()) / 1000
-        : parseFloat(str) / 1000;
-
-    if (isNaN(pesoUnitarioKg) || pesoUnitarioKg <= 0)
+    const pesoUnitarioKg = this.parseUnitWeightToKg(data.unitWeight);
+    if (!isFinite(pesoUnitarioKg) || pesoUnitarioKg <= 0) {
+      console.warn('Peso unitario inválido parseado:', data.unitWeight, '=>', pesoUnitarioKg);
       throw new Error('Peso unitario inválido');
+    }
 
-    const totalWeightKg = pesoUnitarioKg * data.quantity;
+    const quantity = Number(data.quantity) || 0;
+    const totalWeightKg = pesoUnitarioKg * quantity;
+    console.log('pesoUnitarioKg:', pesoUnitarioKg, 'quantity:', quantity, 'totalWeightKg:', totalWeightKg);
 
-    // hallar base de harina
-    const harinaByName = recipe.ingredients.find(i =>
-      (i.name || '').toUpperCase().includes('HARINA'),
-    );
-    const harinaByMaxPct = recipe.ingredients.reduce(
-      (max, i) =>
-        (this.parseNumber(i.bakerPct ?? 0) > this.parseNumber(max.bakerPct ?? 0) ? i : max),
-      recipe.ingredients[0],
-    );
-    const harinaBase = harinaByName || harinaByMaxPct;
+    // hallar harina: por nombre o por mayor bakerPct/value
+    const ingredientes = Array.isArray(recipe.ingredients) ? recipe.ingredients : [];
+    console.log('Ingredientes de receta recibida:', ingredientes);
 
-    const harinaPct = this.parseNumber(
-      harinaBase?.bakerPct ?? harinaBase?.value ?? 100,
-    );
+    const harinaByName = ingredientes.find(i => ('' + (i.name || '')).toUpperCase().includes('HARINA'));
+    const harinaByMaxPct = ingredientes.reduce((max, i) => {
+      const currentPct = this.parseLoose(i.bakerPct ?? i.value ?? 0);
+      const maxPct = this.parseLoose(max?.bakerPct ?? max?.value ?? 0);
+      return currentPct > maxPct ? i : max;
+    }, ingredientes[0] || null);
+
+    const harinaBase = harinaByName || harinaByMaxPct || null;
+    const harinaPct = this.parseLoose(harinaBase?.bakerPct ?? harinaBase?.value ?? 100);
     const baseKg = harinaBase ? (harinaPct / 100) * totalWeightKg : totalWeightKg;
-    console.log('Ingredientes de receta recibida:', recipe.ingredients);
 
-    // calcular ingredientes usados
-    const ingredientsUsed = recipe.ingredients.map(ing => {
-      const mode = (ing.mode || '').toString().toLowerCase();
-      const pct = this.parseNumber(ing.bakerPct ?? ing.value ?? 0);
-      const value = this.parseNumber(ing.value ?? 0);
+    console.log('harinaBase:', harinaBase?.name ?? null, 'harinaPct:', harinaPct, 'baseKg:', baseKg);
+
+    // calcular ingredientesUsed
+    const ingredientsUsed = ingredientes.map((ing: any) => {
+      const modeRaw = ing?.mode ?? '';
+      const mode = String(modeRaw).toLowerCase();
+      const pct = this.parseLoose(ing?.bakerPct ?? ing?.value ?? 0);
+      const value = this.parseLoose(ing?.value ?? 0);
 
       let cantidadKg = 0;
 
@@ -89,21 +140,23 @@ export class OrdersService {
       ) {
         cantidadKg = (pct / 100) * baseKg;
       } else if (mode === 'unit') {
-        cantidadKg = value * data.quantity;
+        cantidadKg = value * quantity;
       } else if (mode === 'fixed') {
         cantidadKg = value;
       } else {
-        cantidadKg = (pct / 100) * baseKg;
+        // fallback: usar pct si existe, sino usar value asumido en kg
+        if (pct > 0) cantidadKg = (pct / 100) * baseKg;
+        else cantidadKg = value;
       }
 
       if (!isFinite(cantidadKg) || cantidadKg < 0) {
-        console.warn(`Ingrediente inválido: ${ing.name}`, ing);
+        console.warn(`Ingrediente inválido detectado, forzando 0:`, ing);
         cantidadKg = 0;
       }
 
-      const rawUnit = (ing.unit || 'kg').toString().toLowerCase();
+      const rawUnit = (ing?.unit || 'kg').toString().toLowerCase();
       let unitOut = rawUnit;
-      let cantidadOut: number;
+      let cantidadOut = 0;
 
       if (rawUnit === 'g') {
         cantidadOut = parseFloat((cantidadKg * 1000).toFixed(2));
@@ -114,7 +167,7 @@ export class OrdersService {
       } else if (rawUnit === 'unidad' || rawUnit === 'unit') {
         cantidadOut = parseFloat(cantidadKg.toFixed(3));
         unitOut = 'unidad';
-      } else if (rawUnit === 'l' || (ing.type || '').toUpperCase() === 'LIQUID') {
+      } else if (rawUnit === 'l' || (ing?.type || '').toString().toUpperCase() === 'LIQUID') {
         if (cantidadKg >= 1) {
           cantidadOut = parseFloat(cantidadKg.toFixed(3));
           unitOut = 'L';
@@ -123,6 +176,7 @@ export class OrdersService {
           unitOut = 'ml';
         }
       } else {
+        // default kg display
         if (cantidadKg < 1) {
           cantidadOut = parseFloat((cantidadKg * 1000).toFixed(2));
           unitOut = 'g';
@@ -132,23 +186,26 @@ export class OrdersService {
         }
       }
 
+      // LOG por ingrediente (útil para debugging en Render)
+      console.log(`Ing => ${ing?.name} | mode:${mode} | pct:${pct} | value:${value} | cantidadKg:${cantidadKg} | out:${cantidadOut}${unitOut}`);
+
       return {
-        name: (ing.name || 'INGREDIENTE').toString().trim().toUpperCase(),
+        name: (ing?.name || 'INGREDIENTE').toString().trim().toUpperCase(),
         cantidad: cantidadOut,
         unit: unitOut,
         _raw: {
-          bakerPct: ing.bakerPct ?? null,
-          value: ing.value ?? null,
-          mode: ing.mode ?? null,
+          bakerPct: ing?.bakerPct ?? null,
+          value: ing?.value ?? null,
+          mode: ing?.mode ?? null,
         },
       };
     });
 
-    // guardar orden
+    // crear la orden
     const order = this.repo.create({
       date: new Date(),
       recipe,
-      quantity: data.quantity,
+      quantity,
       unitWeight: data.unitWeight,
       totalWeight: totalWeightKg,
       ingredientsUsed,
@@ -156,17 +213,14 @@ export class OrdersService {
 
     const saved = await this.repo.save(order);
 
-    // descontar inventario
+    // descontar inventario (respetando nonInventariable y AGUA)
     for (const ing of ingredientsUsed) {
       const name = (ing.name || '').trim().toUpperCase();
       const supply = await this.supplyRepo.findOne({ where: { name } });
 
-      if (!supply || supply.nonInventariable || name === 'AGUA') continue;
+      if (!supply || (supply as any).nonInventariable || name === 'AGUA') continue;
 
-      const delta =
-        ing.unit === 'g' || ing.unit === 'ml'
-          ? -(ing.cantidad / 1000)
-          : -ing.cantidad;
+      const delta = ing.unit === 'g' || ing.unit === 'ml' ? -(ing.cantidad / 1000) : -ing.cantidad;
       await this.suppliesService.updateQuantity(name, delta);
     }
 
@@ -180,10 +234,7 @@ export class OrdersService {
     const order = await this.repo.findOne({ where: { id } });
     if (order?.ingredientsUsed?.length) {
       for (const ing of order.ingredientsUsed) {
-        const delta =
-          ing.unit === 'g' || ing.unit === 'ml'
-            ? ing.cantidad / 1000
-            : ing.cantidad;
+        const delta = ing.unit === 'g' || ing.unit === 'ml' ? ing.cantidad / 1000 : ing.cantidad;
         await this.suppliesService.updateQuantity(ing.name, delta);
       }
     }
